@@ -1,44 +1,51 @@
 @echo off
-chcp 65001 >nul
+chcp 65001 > NUL
 title AVアナグラム - 開発サーバー起動
-
-:: このbatファイルがあるフォルダへ移動
-cd /d "%~dp0"
 
 echo ===================================================
 echo             AVアナグラム 起動スクリプト
 echo ===================================================
 echo.
 
-:: Node.jsの確認
+:: 1. Node.js の確認
 where node >nul 2>nul
-if errorlevel 1 (
-    echo 【エラー】Node.jsが見つかりません。
+if %errorlevel% neq 0 (
+    echo 【エラー】Node.js がインストールされていません。
+    echo 公式サイト (https://nodejs.org/) から Node.js をインストールしてください。
     echo.
     pause
     exit /b 1
 )
 
-:: node_modulesの確認
+:: 2. node_modules の確認と自動インストール
 if not exist "node_modules\" (
-    echo 【確認】依存パッケージをインストールしています...
+    echo 【確認】依存パッケージ未インストールです。
+    echo パッケージをインストールしています...
     call npm install
-    if errorlevel 1 (
-        echo 【エラー】npm installに失敗しました。
+    if %errorlevel% neq 0 (
+        echo 【エラー】npm install に失敗しました。
         echo.
         pause
         exit /b 1
     )
+    echo 【完了】パッケ一ジのインストールが完了しました。
+    echo.
 )
 
+:: 3. 開発サーバーの起動とブラウザ自動オープン
 echo ---------------------------------------------------
 echo 開発サーバーを起動しています...
-echo http://localhost:5173
+echo ブラウザで以下のURLにアクセスできます:
+echo   http://localhost:5173
 echo ---------------------------------------------------
 echo.
 
-node ".\node_modules\vite\bin\vite.js" --host 127.0.0.1 --port 5173 --open
+call npm run dev -- --open
+
+if %errorlevel% neq 0 (
+    echo.
+    echo 【エラー】開発サーバーの起動中にエラーが発生しました。
+)
 
 echo.
-echo 開発サーバーが終了しました。
 pause

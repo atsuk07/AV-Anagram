@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - feat/av-anagram-website-16794799775158557053
 
 permissions:
   contents: read
