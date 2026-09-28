@@ -1,6 +1,6 @@
 import React from 'react';
 import { CardItem, Level } from '../types/game';
-import { Layers, Ungroup, CheckCircle2, RotateCcw, Send } from 'lucide-react';
+import { Layers, Ungroup, RotateCcw, Send } from 'lucide-react';
 
 interface GameBoardProps {
   level: Level;
@@ -112,9 +112,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     : ''
                 }`}
               >
-                {/* Checkbox for Used Status */}
-                <button
-                  type="button"
+                {/* Checkbox Container for Used Status */}
+                <div
                   onClick={() => onToggleUsed(card.id)}
                   title={card.isUsed ? '未使用に戻す' : '使用済みにする'}
                   className="w-full pt-1.5 pb-1 flex justify-center items-center hover:bg-slate-700/30 rounded-t-xl transition-colors cursor-pointer"
@@ -122,10 +121,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   <input
                     type="checkbox"
                     checked={card.isUsed}
-                    onChange={() => {}} // handled by parent container click
+                    onChange={() => {}} // handled by parent div click
                     className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 focus:ring-offset-slate-900 bg-slate-800 border-slate-600 cursor-pointer"
                   />
-                </button>
+                </div>
 
                 {/* Card Text Content */}
                 <button
