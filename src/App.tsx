@@ -9,6 +9,7 @@ import {
   toggleCardUsed,
   groupSelectedCards,
   ungroupCard,
+  reorderCards,
   checkAnswers,
 } from './utils/gameLogic';
 
@@ -64,6 +65,13 @@ export default function App() {
     }));
   };
 
+  const handleReorderCards = (startIndex: number, endIndex: number) => {
+    setGameState((prev) => ({
+      ...prev,
+      cards: reorderCards(prev.cards, startIndex, endIndex),
+    }));
+  };
+
   const handleAnswerChange = (index: number, value: string) => {
     setGameState((prev) => {
       const updated = [...prev.userAnswers];
@@ -116,6 +124,7 @@ export default function App() {
             onToggleUsed={handleToggleUsed}
             onGroupSelected={handleGroupSelected}
             onUngroup={handleUngroup}
+            onReorderCards={handleReorderCards}
             onAnswerChange={handleAnswerChange}
             onSubmitAnswer={handleSubmitAnswer}
             onReset={handleReset}

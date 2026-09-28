@@ -6,6 +6,7 @@ import {
   ungroupCard,
   toggleCardSelection,
   toggleCardUsed,
+  reorderCards,
   checkAnswers,
 } from '../utils/gameLogic';
 import { CardItem } from '../types/game';
@@ -22,6 +23,17 @@ describe('gameLogic', () => {
     expect(cards.length).toBe(6);
     const charList = cards.map(c => c.text).sort();
     expect(charList).toEqual(['A', 'B', 'C', 'D', 'E', 'F']);
+  });
+
+  it('reorders cards correctly', () => {
+    const initialCards: CardItem[] = [
+      { id: '1', text: 'A', isGroup: false, isSelected: false, isUsed: false },
+      { id: '2', text: 'B', isGroup: false, isSelected: false, isUsed: false },
+      { id: '3', text: 'C', isGroup: false, isSelected: false, isUsed: false },
+    ];
+
+    const reordered = reorderCards(initialCards, 0, 2);
+    expect(reordered.map(c => c.text)).toEqual(['B', 'C', 'A']);
   });
 
   it('groups selected cards correctly', () => {

@@ -20,6 +20,16 @@ export function shuffleArray<T>(array: T[]): T[] {
 }
 
 /**
+ * Reorders items in a list (drag and drop helper)
+ */
+export function reorderCards(cards: CardItem[], startIndex: number, endIndex: number): CardItem[] {
+  const result = Array.from(cards);
+  const [removed] = result.splice(startIndex, 1);
+  result.splice(endIndex, 0, removed);
+  return result;
+}
+
+/**
  * Creates initial CardItems from input titles.
  * All characters from all titles are merged together and shuffled randomly.
  */

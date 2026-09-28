@@ -1,6 +1,12 @@
 import React from 'react';
 import { CardItem, Level } from '../types/game';
-import { Layers, Ungroup, RotateCcw, Send } from 'lucide-react';
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from '@hello-pangea/dnd';
+import { Layers, Ungroup, RotateCcw, Send, GripVertical } from 'lucide-react';
 
 interface GameBoardProps {
   level: Level;
@@ -10,6 +16,7 @@ interface GameBoardProps {
   onToggleUsed: (cardId: string) => void;
   onGroupSelected: () => void;
   onUngroup: (cardId: string) => void;
+  onReorderCards: (startIndex: number, endIndex: number) => void;
   onAnswerChange: (index: number, value: string) => void;
   onSubmitAnswer: () => void;
   onReset: () => void;
@@ -23,6 +30,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   onToggleUsed,
   onGroupSelected,
   onUngroup,
+  onReorderCards,
   onAnswerChange,
   onSubmitAnswer,
   onReset,
@@ -35,6 +43,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     selectedCards.length === 1 && selectedCards[0].isGroup
       ? selectedCards[0]
       : null;
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    if (result.destination.index === result.source.index) return;
+    onReorderCards(result.source.index, result.destination.index);
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -61,7 +75,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       <div className="bg-slate-800/90 rounded-2xl p-5 border border-slate-700 shadow-xl space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-300">
-            シャッフルされた文字（タップで選択 / チェックで使用済み）
+            シャッフルされた文字（ドラッグで並び替え / タップで選択 / チェックで使用済み）
           </h3>
           <span className="text-xs text-slate-400">
             {cards.length} 文字
@@ -100,52 +114,78 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           )}
         </div>
 
-        {/* Cards Grid/Wrap Container */}
-        <div className="flex flex-wrap gap-2.5 sm:gap-3 justify-center min-h-[120px] p-4 bg-slate-900/60 rounded-xl border border-slate-700/50">
-          {cards.map((card) => {
-            return (
+        {/* Drag and Drop Container */}
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId="anagram-cards" direction="horizontal">
+            {(provided) => (
               <div
-                key={card.id}
-                className={`flex flex-col items-center justify-between rounded-xl transition-all duration-150 select-none ${
-                  card.isSelected
-                    ? 'ring-2 ring-pink-500 ring-offset-2 ring-offset-slate-900 scale-[1.03]'
-                    : ''
-                }`}
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="flex flex-wrap gap-2.5 sm:gap-3 justify-center min-h-[120px] p-4 bg-slate-900/60 rounded-xl border border-slate-700/50"
               >
-                {/* Checkbox Container for Used Status */}
-                <div
-                  onClick={() => onToggleUsed(card.id)}
-                  title={card.isUsed ? '未使用に戻す' : '使用済みにする'}
-                  className="w-full pt-1.5 pb-1 flex justify-center items-center hover:bg-slate-700/30 rounded-t-xl transition-colors cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={card.isUsed}
-                    onChange={() => {}} // handled by parent div click
-                    className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 focus:ring-offset-slate-900 bg-slate-800 border-slate-600 cursor-pointer"
-                  />
-                </div>
+                {cards.map((card, index) => (
+                  <Draggable key={card.id} draggableId={card.id} index={index}>
+                    {(draggableProvided, snapshot) => (
+                      <div
+                        ref={draggableProvided.innerRef}
+                        {...draggableProvided.draggableProps}
+                        {...draggableProvided.dragHandleProps}
+                        className={`flex flex-col items-center justify-between rounded-xl transition-all duration-150 select-none ${
+                          snapshot.isDragging
+                            ? 'shadow-2xl ring-2 ring-purple-400 z-50 opacity-90 scale-105'
+                            : ''
+                        } ${
+                          card.isSelected
+                            ? 'ring-2 ring-pink-500 ring-offset-2 ring-offset-slate-900 scale-[1.03]'
+                            : ''
+                        }`}
+                      >
+                        {/* Checkbox Container for Used Status */}
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleUsed(card.id);
+                          }}
+                          title={card.isUsed ? '未使用に戻す' : '使用済みにする'}
+                          className="w-full pt-1.5 pb-1 flex justify-center items-center hover:bg-slate-700/30 rounded-t-xl transition-colors cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={card.isUsed}
+                            onChange={() => {}} // handled by parent div click
+                            className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 focus:ring-offset-slate-900 bg-slate-800 border-slate-600 cursor-pointer"
+                          />
+                        </div>
 
-                {/* Card Text Content */}
-                <button
-                  type="button"
-                  onClick={() => onToggleSelect(card.id)}
-                  className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-b-xl font-bold text-center transition-all cursor-pointer flex items-center justify-center min-w-[44px] ${
-                    card.isUsed
-                      ? 'bg-slate-800/40 text-slate-500 line-through opacity-60 border border-slate-800'
-                      : card.isGroup
-                      ? 'bg-gradient-to-br from-purple-900/90 to-indigo-900/90 text-purple-200 border border-purple-500/50 shadow-sm'
-                      : 'bg-slate-700/90 hover:bg-slate-650 text-white border border-slate-600'
-                  }`}
-                >
-                  <span className="text-base sm:text-lg tracking-wider">
-                    {card.text}
-                  </span>
-                </button>
+                        {/* Card Text Content */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleSelect(card.id);
+                          }}
+                          className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-b-xl font-bold text-center transition-all cursor-pointer flex items-center justify-center min-w-[44px] gap-1 ${
+                            card.isUsed
+                              ? 'bg-slate-800/40 text-slate-500 line-through opacity-60 border border-slate-800'
+                              : card.isGroup
+                              ? 'bg-gradient-to-br from-purple-900/90 to-indigo-900/90 text-purple-200 border border-purple-500/50 shadow-sm'
+                              : 'bg-slate-700/90 hover:bg-slate-650 text-white border border-slate-600'
+                          }`}
+                        >
+                          <GripVertical className="w-3.5 h-3.5 text-slate-400 opacity-60 hover:opacity-100" />
+                          <span className="text-base sm:text-lg tracking-wider">
+                            {card.text}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
               </div>
-            );
-          })}
-        </div>
+            )}
+          </Droppable>
+        </DragDropContext>
       </div>
 
       {/* Answer Inputs Section */}
