@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
+import { CheckCircle2, XCircle, RotateCcw, ExternalLink } from 'lucide-react';
+import { getAffiliateUrl } from '../utils/affiliate';
 
 interface ResultModalProps {
   isCorrect: boolean;
@@ -61,23 +62,43 @@ export const ResultModal: React.FC<ResultModalProps> = ({
           </p>
         </div>
 
-        {/* Correct Answers Display */}
+        {/* Correct Answers Display with Conditional Affiliate Links */}
         <div className="bg-slate-900/80 rounded-xl p-4 border border-slate-700/80 text-left space-y-2">
           <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider">
             正解タイトル
           </span>
-          <div className="space-y-1.5">
-            {correctTitles.map((title, idx) => (
-              <div
-                key={idx}
-                className="p-2.5 bg-slate-800 rounded-lg text-white font-medium text-sm border border-slate-700 flex items-center gap-2"
-              >
-                <span className="text-xs px-2 py-0.5 rounded bg-pink-500/20 text-pink-300 font-bold">
-                  {idx + 1}
-                </span>
-                <span>{title}</span>
-              </div>
-            ))}
+          <div className="space-y-2.5">
+            {correctTitles.map((title, idx) => {
+              const affiliateUrl = getAffiliateUrl(title);
+              return (
+                <div
+                  key={idx}
+                  className="p-3 bg-slate-800 rounded-lg text-white font-medium text-sm border border-slate-700 space-y-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2 py-0.5 rounded bg-pink-500/20 text-pink-300 font-bold">
+                      {idx + 1}
+                    </span>
+                    <span className="break-all">{title}</span>
+                  </div>
+
+                  {/* Affiliate Link Button if configured */}
+                  {affiliateUrl && (
+                    <div className="pt-1 border-t border-slate-700/60">
+                      <a
+                        href={affiliateUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-2 px-3 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md shadow-pink-600/20 active:scale-[0.98]"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>この作品を見る</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
