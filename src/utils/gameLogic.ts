@@ -48,7 +48,97 @@ export function createAnagramCards(titles: string[]): CardItem[] {
     isGroup: false,
     isSelected: false,
     isUsed: false,
+    containerId: 'pool',
   }));
+}
+
+/**
+ * Returns containerId of card, defaulting to 'pool'
+ */
+export function getCardContainerId(card: CardItem): string {
+  return card.containerId || 'pool';
+}
+
+/**
+ * Moves a card between containers or reorders within a container.
+ */
+export function moveCardContainer(
+  cards: CardItem[],
+  sourceDroppableId: string,
+  sourceIndex: number,
+  destDroppableId: string,
+  destIndex: number
+): CardItem[] {
+  const sourceItems = cards.filter(c => getCardContainerId(c) === sourceDroppableId);
+  const destItems =
+    sourceDroppableId === destDroppableId
+      ? sourceItems
+      : cards.filter(c => getCardContainerId(c) === destDroppableId);
+
+  if (sourceDroppableId === destDroppableId) {
+    const reordered = reorderCards(sourceItems, sourceIndex, destIndex);
+    const reorderedMap = [...reordered];
+    return cards.map(c => {
+      if (getCardContainerId(c) === sourceDroppableId) {
+        return reorderedMap.shift()!;
+      }
+      return c;
+    });
+  }
+
+  const movedItem = { ...sourceItems[sourceIndex], containerId: destDroppableId };
+  const newSourceItems = [...sourceItems];
+  newSourceItems.splice(sourceIndex, 1);
+
+  const newDestItems = [...destItems];
+  newDestItems.splice(destIndex, 0, movedItem);
+
+  let sourcePointer = 0;
+  let destPointer = 0;
+
+  const result: CardItem[] = [];
+
+  for (const card of cards) {
+    const cId = getCardContainerId(card);
+    if (cId === sourceDroppableId) {
+      if (sourcePointer < newSourceItems.length) {
+        result.push(newSourceItems[sourcePointer++]);
+      }
+    } else if (cId === destDroppableId) {
+      if (destPointer < newDestItems.length) {
+        result.push(newDestItems[destPointer++]);
+      }
+    } else {
+      result.push(card);
+    }
+  }
+
+  while (destPointer < newDestItems.length) {
+    result.push(newDestItems[destPointer++]);
+  }
+
+  return result;
+}
+
+/**
+ * Returns concatenated text for all cards in a given container ID.
+ */
+export function getAnswerTextForContainer(cards: CardItem[], containerId: string): string {
+  return cards
+    .filter(c => getCardContainerId(c) === containerId)
+    .map(c => c.text)
+    .join('');
+}
+
+/**
+ * Returns answer strings for all answer containers up to level count.
+ */
+export function getUserAnswersFromCards(cards: CardItem[], level: number): string[] {
+  const answers: string[] = [];
+  for (let i = 0; i < level; i++) {
+    answers.push(getAnswerTextForContainer(cards, `answer-${i}`));
+  }
+  return answers;
 }
 
 /**
@@ -60,6 +150,8 @@ export function groupSelectedCards(cards: CardItem[]): CardItem[] {
     return cards; // Nothing to group
   }
 
+  const firstSelected = selectedCards[0];
+  const containerId = getCardContainerId(firstSelected);
   const groupedText = selectedCards.map(c => c.text).join('');
   const firstSelectedIndex = cards.findIndex(c => c.isSelected);
 
@@ -69,6 +161,7 @@ export function groupSelectedCards(cards: CardItem[]): CardItem[] {
     isGroup: true,
     isSelected: false,
     isUsed: false,
+    containerId,
   };
 
   const newCards: CardItem[] = [];
@@ -97,6 +190,7 @@ export function ungroupCard(cards: CardItem[], targetCardId: string): CardItem[]
     return cards;
   }
 
+  const containerId = getCardContainerId(targetCard);
   const chars = splitIntoChars(targetCard.text);
   const unstackedCards: CardItem[] = chars.map((char, index) => ({
     id: `card-${index}-${Math.random().toString(36).substring(2, 9)}`,
@@ -104,6 +198,7 @@ export function ungroupCard(cards: CardItem[], targetCardId: string): CardItem[]
     isGroup: false,
     isSelected: false,
     isUsed: targetCard.isUsed, // Preserve used status or reset
+    containerId,
   }));
 
   const targetIndex = cards.findIndex(c => c.id === targetCardId);

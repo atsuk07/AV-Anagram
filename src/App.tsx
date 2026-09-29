@@ -9,7 +9,8 @@ import {
   toggleCardUsed,
   groupSelectedCards,
   ungroupCard,
-  reorderCards,
+  moveCardContainer,
+  getUserAnswersFromCards,
   checkAnswers,
 } from './utils/gameLogic';
 import { decodeProblem } from './utils/share';
@@ -65,38 +66,55 @@ export default function App() {
   };
 
   const handleGroupSelected = () => {
-    setGameState((prev) => ({
-      ...prev,
-      cards: groupSelectedCards(prev.cards),
-    }));
+    setGameState((prev) => {
+      const newCards = groupSelectedCards(prev.cards);
+      return {
+        ...prev,
+        cards: newCards,
+        userAnswers: getUserAnswersFromCards(newCards, prev.level),
+      };
+    });
   };
 
   const handleUngroup = (cardId: string) => {
-    setGameState((prev) => ({
-      ...prev,
-      cards: ungroupCard(prev.cards, cardId),
-    }));
-  };
-
-  const handleReorderCards = (startIndex: number, endIndex: number) => {
-    setGameState((prev) => ({
-      ...prev,
-      cards: reorderCards(prev.cards, startIndex, endIndex),
-    }));
-  };
-
-  const handleAnswerChange = (index: number, value: string) => {
     setGameState((prev) => {
-      const updated = [...prev.userAnswers];
-      updated[index] = value;
-      return { ...prev, userAnswers: updated };
+      const newCards = ungroupCard(prev.cards, cardId);
+      return {
+        ...prev,
+        cards: newCards,
+        userAnswers: getUserAnswersFromCards(newCards, prev.level),
+      };
+    });
+  };
+
+  const handleMoveCardContainer = (
+    sourceDroppableId: string,
+    sourceIndex: number,
+    destDroppableId: string,
+    destIndex: number
+  ) => {
+    setGameState((prev) => {
+      const newCards = moveCardContainer(
+        prev.cards,
+        sourceDroppableId,
+        sourceIndex,
+        destDroppableId,
+        destIndex
+      );
+      return {
+        ...prev,
+        cards: newCards,
+        userAnswers: getUserAnswersFromCards(newCards, prev.level),
+      };
     });
   };
 
   const handleSubmitAnswer = () => {
-    const isCorrect = checkAnswers(gameState.userAnswers, gameState.titles);
+    const answers = getUserAnswersFromCards(gameState.cards, gameState.level);
+    const isCorrect = checkAnswers(answers, gameState.titles);
     setGameState((prev) => ({
       ...prev,
+      userAnswers: answers,
       isSubmitted: true,
       isCorrect,
     }));
@@ -143,8 +161,7 @@ export default function App() {
             onToggleUsed={handleToggleUsed}
             onGroupSelected={handleGroupSelected}
             onUngroup={handleUngroup}
-            onReorderCards={handleReorderCards}
-            onAnswerChange={handleAnswerChange}
+            onMoveCardContainer={handleMoveCardContainer}
             onSubmitAnswer={handleSubmitAnswer}
             onReset={handleReset}
           />

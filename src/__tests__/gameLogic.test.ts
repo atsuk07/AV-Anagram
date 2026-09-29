@@ -7,6 +7,10 @@ import {
   toggleCardSelection,
   toggleCardUsed,
   reorderCards,
+  getCardContainerId,
+  moveCardContainer,
+  getAnswerTextForContainer,
+  getUserAnswersFromCards,
   checkAnswers,
 } from '../utils/gameLogic';
 import { CardItem } from '../types/game';
@@ -76,6 +80,59 @@ describe('gameLogic', () => {
 
     const used = toggleCardUsed(cards, '1');
     expect(used[0].isUsed).toBe(true);
+  });
+
+  describe('container movement and answer building', () => {
+    it('returns default pool container if containerId is not set', () => {
+      const card: CardItem = { id: '1', text: 'A', isGroup: false, isSelected: false, isUsed: false };
+      expect(getCardContainerId(card)).toBe('pool');
+    });
+
+    it('moves card from pool to answer container', () => {
+      const initialCards: CardItem[] = [
+        { id: '1', text: '女', isGroup: false, isSelected: false, isUsed: false, containerId: 'pool' },
+        { id: '2', text: '優', isGroup: false, isSelected: false, isUsed: false, containerId: 'pool' },
+      ];
+
+      const moved = moveCardContainer(initialCards, 'pool', 0, 'answer-0', 0);
+      expect(moved.find(c => c.id === '1')?.containerId).toBe('answer-0');
+      expect(getAnswerTextForContainer(moved, 'answer-0')).toBe('女');
+      expect(getAnswerTextForContainer(moved, 'pool')).toBe('優');
+    });
+
+    it('moves card from answer container back to pool', () => {
+      const initialCards: CardItem[] = [
+        { id: '1', text: '女', isGroup: false, isSelected: false, isUsed: false, containerId: 'answer-0' },
+        { id: '2', text: '優', isGroup: false, isSelected: false, isUsed: false, containerId: 'pool' },
+      ];
+
+      const moved = moveCardContainer(initialCards, 'answer-0', 0, 'pool', 1);
+      expect(moved.find(c => c.id === '1')?.containerId).toBe('pool');
+      expect(getAnswerTextForContainer(moved, 'answer-0')).toBe('');
+      expect(getAnswerTextForContainer(moved, 'pool')).toBe('優女');
+    });
+
+    it('reorders cards inside an answer container', () => {
+      const initialCards: CardItem[] = [
+        { id: '1', text: '優', isGroup: false, isSelected: false, isUsed: false, containerId: 'answer-0' },
+        { id: '2', text: '女', isGroup: false, isSelected: false, isUsed: false, containerId: 'answer-0' },
+      ];
+
+      const reordered = moveCardContainer(initialCards, 'answer-0', 0, 'answer-0', 1);
+      expect(getAnswerTextForContainer(reordered, 'answer-0')).toBe('女優');
+    });
+
+    it('extracts answers array for all level containers', () => {
+      const cards: CardItem[] = [
+        { id: '1', text: '女', isGroup: false, isSelected: false, isUsed: false, containerId: 'answer-0' },
+        { id: '2', text: '優', isGroup: false, isSelected: false, isUsed: false, containerId: 'answer-0' },
+        { id: '3', text: '作', isGroup: false, isSelected: false, isUsed: false, containerId: 'answer-1' },
+        { id: '4', text: '品', isGroup: false, isSelected: false, isUsed: false, containerId: 'answer-1' },
+      ];
+
+      const answers = getUserAnswersFromCards(cards, 2);
+      expect(answers).toEqual(['女優', '作品']);
+    });
   });
 
   describe('checkAnswers', () => {

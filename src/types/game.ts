@@ -4,6 +4,7 @@ export interface CardItem {
   isGroup: boolean;
   isSelected: boolean;
   isUsed: boolean;
+  containerId?: string; // 'pool' | 'answer-0' | 'answer-1' | 'answer-2'
 }
 
 export type Level = 1 | 2 | 3;
