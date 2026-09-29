@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TitleInput } from './components/TitleInput';
 import { GameBoard } from './components/GameBoard';
 import { ResultModal } from './components/ResultModal';
@@ -12,6 +12,7 @@ import {
   reorderCards,
   checkAnswers,
 } from './utils/gameLogic';
+import { decodeProblem } from './utils/share';
 
 export default function App() {
   const [stage, setStage] = useState<'input' | 'playing'>('input');
@@ -23,6 +24,18 @@ export default function App() {
     isSubmitted: false,
     isCorrect: null,
   });
+
+  // Handle shared URL auto-loading on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedParam = urlParams.get('p');
+    if (sharedParam) {
+      const decoded = decodeProblem(sharedParam);
+      if (decoded) {
+        handleStartGame(decoded.level, decoded.titles);
+      }
+    }
+  }, []);
 
   const handleStartGame = (level: Level, titles: string[]) => {
     const cards = createAnagramCards(titles);
@@ -90,6 +103,11 @@ export default function App() {
   };
 
   const handleReset = () => {
+    // Clear URL search params without page reload
+    if (window.location.search) {
+      window.history.pushState({}, '', window.location.pathname);
+    }
+
     setStage('input');
     setGameState({
       level: 1,
@@ -118,6 +136,7 @@ export default function App() {
         ) : (
           <GameBoard
             level={gameState.level}
+            titles={gameState.titles}
             cards={gameState.cards}
             userAnswers={gameState.userAnswers}
             onToggleSelect={handleToggleSelect}

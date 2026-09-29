@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CardItem, Level } from '../types/game';
 import {
   DragDropContext,
@@ -6,10 +6,12 @@ import {
   Draggable,
   DropResult,
 } from '@hello-pangea/dnd';
-import { Layers, Ungroup, RotateCcw, Send, GripVertical } from 'lucide-react';
+import { Layers, Ungroup, RotateCcw, Send, GripVertical, Share2, Check } from 'lucide-react';
+import { generateShareUrl } from '../utils/share';
 
 interface GameBoardProps {
   level: Level;
+  titles: string[];
   cards: CardItem[];
   userAnswers: string[];
   onToggleSelect: (cardId: string) => void;
@@ -24,6 +26,7 @@ interface GameBoardProps {
 
 export const GameBoard: React.FC<GameBoardProps> = ({
   level,
+  titles,
   cards,
   userAnswers,
   onToggleSelect,
@@ -35,6 +38,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   onSubmitAnswer,
   onReset,
 }) => {
+  const [copied, setCopied] = useState(false);
+
   const selectedCards = cards.filter((c) => c.isSelected);
   const canGroup = selectedCards.length > 1;
 
@@ -50,10 +55,31 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     onReorderCards(result.source.index, result.destination.index);
   };
 
+  const handleCopyShareUrl = async () => {
+    const url = generateShareUrl(level, titles);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        // Fallback for older browsers
+        const input = document.createElement('input');
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch (err) {
+      console.error('Failed to copy share URL:', err);
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Top Header Controls */}
-      <div className="flex items-center justify-between bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-800/80 p-4 rounded-xl border border-slate-700">
         <div>
           <span className="text-xs font-semibold text-pink-400 uppercase tracking-wider block">
             Difficulty
@@ -62,13 +88,38 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             Lv.{level} （{level === 1 ? '1タイトル' : `${level}タイトル`}）
           </h2>
         </div>
-        <button
-          onClick={onReset}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium transition-colors"
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span>タイトル入力に戻る</span>
-        </button>
+
+        <div className="flex items-center gap-2">
+          {/* Share Button */}
+          <button
+            onClick={handleCopyShareUrl}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              copied
+                ? 'bg-emerald-600 text-white'
+                : 'bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white shadow-md shadow-pink-600/20'
+            }`}
+          >
+            {copied ? (
+              <>
+                <Check className="w-4 h-4" />
+                <span>URLをコピーしました！</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="w-4 h-4" />
+                <span>この問題をシェア</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={onReset}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>タイトル入力に戻る</span>
+          </button>
+        </div>
       </div>
 
       {/* Cards Display Section */}
