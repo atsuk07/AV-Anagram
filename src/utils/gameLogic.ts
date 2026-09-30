@@ -1,10 +1,11 @@
 import { CardItem } from '../types/game';
 
 /**
- * Split text into array of characters (supports unicode/emoji correctly if needed)
+ * Split text into array of characters, excluding all half-width and full-width spaces
  */
 export function splitIntoChars(text: string): string[] {
-  return Array.from(text);
+  const stripped = text.replace(/[\s\u3000]+/g, '');
+  return Array.from(stripped);
 }
 
 /**
@@ -241,8 +242,8 @@ export function checkAnswers(userAnswers: string[], targetTitles: string[]): boo
     return false;
   }
 
-  const normalizedUser = userAnswers.map(a => a.trim());
-  const normalizedTargets = targetTitles.map(t => t.trim());
+  const normalizedUser = userAnswers.map(a => a.replace(/[\s\u3000]+/g, ''));
+  const normalizedTargets = targetTitles.map(t => t.replace(/[\s\u3000]+/g, ''));
 
   // Copy target array to track unmatched titles
   const remainingTargets = [...normalizedTargets];

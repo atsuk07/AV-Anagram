@@ -1,12 +1,37 @@
 import React, { useState } from 'react';
 import { CardItem, Level } from '../types/game';
 import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  DropResult,
-} from '@hello-pangea/dnd';
-import { Layers, Ungroup, RotateCcw, Send, GripVertical, Share2, Check, ArrowDown, ArrowUp } from 'lucide-react';
+  DndContext,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragOverEvent,
+  DragEndEvent,
+  DragOverlay,
+  useDroppable,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  Layers,
+  Ungroup,
+  RotateCcw,
+  Send,
+  GripVertical,
+  Share2,
+  Check,
+  ArrowDown,
+  ArrowUp,
+} from 'lucide-react';
 import { generateShareUrl } from '../utils/share';
 import { getCardContainerId } from '../utils/gameLogic';
 
@@ -29,6 +54,149 @@ interface GameBoardProps {
   onReset: () => void;
 }
 
+interface SortableCardProps {
+  card: CardItem;
+  index: number;
+  onToggleSelect: (id: string) => void;
+  onToggleUsed: (id: string) => void;
+  onQuickMove: (card: CardItem, index: number) => void;
+}
+
+const SortableCardItem: React.FC<SortableCardProps> = ({
+  card,
+  index,
+  onToggleSelect,
+  onToggleUsed,
+  onQuickMove,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: card.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const currentContainer = getCardContainerId(card);
+  const isInPool = currentContainer === 'pool';
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex flex-col items-center justify-between rounded-xl transition-all duration-150 select-none bg-slate-800 border ${
+        isDragging
+          ? 'shadow-2xl ring-2 ring-purple-400 z-50 opacity-40 scale-105 border-purple-400'
+          : 'border-slate-700'
+      } ${
+        card.isSelected
+          ? 'ring-2 ring-pink-500 ring-offset-2 ring-offset-slate-900 scale-[1.03]'
+          : ''
+      }`}
+    >
+      {/* Top Bar with Checkbox & Quick Move Button */}
+      <div className="w-full pt-1.5 pb-1 px-2 flex justify-between items-center bg-slate-900/40 rounded-t-xl border-b border-slate-700/50">
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleUsed(card.id);
+          }}
+          title={card.isUsed ? '未使用に戻す' : '使用済みにする'}
+          className="flex items-center cursor-pointer p-0.5 hover:bg-slate-700/50 rounded"
+        >
+          <input
+            type="checkbox"
+            checked={card.isUsed}
+            onChange={() => {}}
+            className="w-3.5 h-3.5 rounded text-pink-600 focus:ring-pink-500 bg-slate-800 border-slate-600 cursor-pointer"
+          />
+        </div>
+
+        {/* Quick Move Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onQuickMove(card, index);
+          }}
+          title={isInPool ? '回答欄1へ移動' : 'プールへ戻す'}
+          className="p-1 text-slate-400 hover:text-pink-400 hover:bg-slate-700/60 rounded transition-colors"
+        >
+          {isInPool ? (
+            <ArrowDown className="w-3.5 h-3.5" />
+          ) : (
+            <ArrowUp className="w-3.5 h-3.5" />
+          )}
+        </button>
+      </div>
+
+      {/* Drag Handle & Card Text */}
+      <div
+        {...attributes}
+        {...listeners}
+        onClick={() => onToggleSelect(card.id)}
+        className={`px-3 py-2 sm:px-4 sm:py-2.5 w-full rounded-b-xl font-bold text-center transition-all cursor-grab active:cursor-grabbing flex items-center justify-center min-w-[48px] gap-1.5 ${
+          card.isUsed
+            ? 'bg-slate-800/40 text-slate-500 line-through opacity-60'
+            : card.isGroup
+            ? 'bg-gradient-to-br from-purple-900/90 to-indigo-900/90 text-purple-200 shadow-sm'
+            : 'bg-slate-700/90 hover:bg-slate-650 text-white'
+        }`}
+      >
+        <GripVertical className="w-3.5 h-3.5 text-slate-400 opacity-60" />
+        <span className="text-base sm:text-lg tracking-wider">
+          {card.text}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+interface DroppableZoneProps {
+  id: string;
+  items: CardItem[];
+  children: React.ReactNode;
+  placeholderText?: string;
+  className?: string;
+}
+
+const DroppableZone: React.FC<DroppableZoneProps> = ({
+  id,
+  items,
+  children,
+  placeholderText,
+  className,
+}) => {
+  const { setNodeRef, isOver } = useDroppable({ id });
+
+  return (
+    <SortableContext
+      items={items.map((item) => item.id)}
+      strategy={rectSortingStrategy}
+    >
+      <div
+        ref={setNodeRef}
+        className={`${className} ${
+          isOver ? 'ring-2 ring-purple-500/50 bg-slate-900/90 border-purple-500/50' : ''
+        }`}
+      >
+        {items.length === 0 && placeholderText && (
+          <p className="text-xs text-slate-500 w-full text-center py-6 select-none">
+            {placeholderText}
+          </p>
+        )}
+        {children}
+      </div>
+    </SortableContext>
+  );
+};
+
 export const GameBoard: React.FC<GameBoardProps> = ({
   level,
   titles,
@@ -43,32 +211,34 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   onReset,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 3,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 100,
+        tolerance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const selectedCards = cards.filter((c) => c.isSelected);
   const canGroup = selectedCards.length > 1;
 
-  // Single selected group card for ungrouping option
   const singleSelectedGroupCard =
     selectedCards.length === 1 && selectedCards[0].isGroup
       ? selectedCards[0]
       : null;
 
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
-    const { source, destination } = result;
-    if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
-    ) {
-      return;
-    }
-    onMoveCardContainer(
-      source.droppableId,
-      source.index,
-      destination.droppableId,
-      destination.index
-    );
-  };
+  const poolCards = cards.filter((c) => getCardContainerId(c) === 'pool');
 
   const handleCopyShareUrl = async () => {
     const url = generateShareUrl(level, titles);
@@ -90,99 +260,125 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     }
   };
 
-  const poolCards = cards.filter((c) => getCardContainerId(c) === 'pool');
-
   const handleQuickMove = (card: CardItem, sourceIndex: number) => {
     const currentContainer = getCardContainerId(card);
     if (currentContainer === 'pool') {
-      // Find first answer box or answer-0
       const destContainer = 'answer-0';
-      const destCards = cards.filter(c => getCardContainerId(c) === destContainer);
+      const destCards = cards.filter(
+        (c) => getCardContainerId(c) === destContainer
+      );
       onMoveCardContainer('pool', sourceIndex, destContainer, destCards.length);
     } else {
-      // Move back to pool
-      onMoveCardContainer(currentContainer, sourceIndex, 'pool', poolCards.length);
+      onMoveCardContainer(
+        currentContainer,
+        sourceIndex,
+        'pool',
+        poolCards.length
+      );
     }
   };
 
-  const renderCardItem = (card: CardItem, index: number) => {
-    const currentContainer = getCardContainerId(card);
-    const isInPool = currentContainer === 'pool';
-
-    return (
-      <Draggable key={card.id} draggableId={card.id} index={index}>
-        {(draggableProvided, snapshot) => (
-          <div
-            ref={draggableProvided.innerRef}
-            {...draggableProvided.draggableProps}
-            className={`flex flex-col items-center justify-between rounded-xl transition-all duration-150 select-none bg-slate-800 border ${
-              snapshot.isDragging
-                ? 'shadow-2xl ring-2 ring-purple-400 z-50 opacity-90 scale-105 border-purple-400'
-                : 'border-slate-700'
-            } ${
-              card.isSelected
-                ? 'ring-2 ring-pink-500 ring-offset-2 ring-offset-slate-900 scale-[1.03]'
-                : ''
-            }`}
-          >
-            {/* Top Bar with Checkbox & Quick Move Button */}
-            <div className="w-full pt-1.5 pb-1 px-2 flex justify-between items-center bg-slate-900/40 rounded-t-xl border-b border-slate-700/50">
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleUsed(card.id);
-                }}
-                title={card.isUsed ? '未使用に戻す' : '使用済みにする'}
-                className="flex items-center cursor-pointer p-0.5 hover:bg-slate-700/50 rounded"
-              >
-                <input
-                  type="checkbox"
-                  checked={card.isUsed}
-                  onChange={() => {}}
-                  className="w-3.5 h-3.5 rounded text-pink-600 focus:ring-pink-500 bg-slate-800 border-slate-600 cursor-pointer"
-                />
-              </div>
-
-              {/* Quick Move Button for Tap/Click accessibility */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleQuickMove(card, index);
-                }}
-                title={isInPool ? '回答欄1へ移動' : 'プールへ戻す'}
-                className="p-1 text-slate-400 hover:text-pink-400 hover:bg-slate-700/60 rounded transition-colors"
-              >
-                {isInPool ? (
-                  <ArrowDown className="w-3.5 h-3.5" />
-                ) : (
-                  <ArrowUp className="w-3.5 h-3.5" />
-                )}
-              </button>
-            </div>
-
-            {/* Drag Handle & Card Body */}
-            <div
-              {...draggableProvided.dragHandleProps}
-              onClick={() => onToggleSelect(card.id)}
-              className={`px-3 py-2 sm:px-4 sm:py-2.5 w-full rounded-b-xl font-bold text-center transition-all cursor-grab active:cursor-grabbing flex items-center justify-center min-w-[48px] gap-1.5 ${
-                card.isUsed
-                  ? 'bg-slate-800/40 text-slate-500 line-through opacity-60'
-                  : card.isGroup
-                  ? 'bg-gradient-to-br from-purple-900/90 to-indigo-900/90 text-purple-200 shadow-sm'
-                  : 'bg-slate-700/90 hover:bg-slate-650 text-white'
-              }`}
-            >
-              <GripVertical className="w-3.5 h-3.5 text-slate-400 opacity-60" />
-              <span className="text-base sm:text-lg tracking-wider">
-                {card.text}
-              </span>
-            </div>
-          </div>
-        )}
-      </Draggable>
-    );
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
   };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeIdStr = String(active.id);
+    const overIdStr = String(over.id);
+
+    if (activeIdStr === overIdStr) return;
+
+    const activeCard = cards.find((c) => c.id === activeIdStr);
+    if (!activeCard) return;
+
+    const activeContainer = getCardContainerId(activeCard);
+
+    let overContainer = overIdStr;
+    const overCard = cards.find((c) => c.id === overIdStr);
+    if (overCard) {
+      overContainer = getCardContainerId(overCard);
+    }
+
+    if (activeContainer !== overContainer) {
+      const activeItems = cards.filter(
+        (c) => getCardContainerId(c) === activeContainer
+      );
+      const sourceIndex = activeItems.findIndex((c) => c.id === activeIdStr);
+
+      let targetIndex = 0;
+      if (overCard) {
+        const overItems = cards.filter(
+          (c) => getCardContainerId(c) === overContainer
+        );
+        targetIndex = overItems.findIndex((c) => c.id === overIdStr);
+      } else {
+        const overItems = cards.filter(
+          (c) => getCardContainerId(c) === overContainer
+        );
+        targetIndex = overItems.length;
+      }
+
+      if (sourceIndex !== -1) {
+        onMoveCardContainer(
+          activeContainer,
+          sourceIndex,
+          overContainer,
+          targetIndex
+        );
+      }
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const activeIdStr = String(active.id);
+    const overIdStr = String(over.id);
+
+    const activeCard = cards.find((c) => c.id === activeIdStr);
+    if (!activeCard) return;
+
+    const activeContainer = getCardContainerId(activeCard);
+
+    let overContainer = overIdStr;
+    const overCard = cards.find((c) => c.id === overIdStr);
+    if (overCard) {
+      overContainer = getCardContainerId(overCard);
+    }
+
+    const containerCards = cards.filter(
+      (c) => getCardContainerId(c) === activeContainer
+    );
+    const sourceIndex = containerCards.findIndex((c) => c.id === activeIdStr);
+
+    let targetIndex = 0;
+    if (overCard) {
+      targetIndex = containerCards.findIndex((c) => c.id === overIdStr);
+    } else {
+      targetIndex = containerCards.length - 1;
+    }
+
+    if (
+      sourceIndex !== -1 &&
+      targetIndex !== -1 &&
+      sourceIndex !== targetIndex
+    ) {
+      onMoveCardContainer(
+        activeContainer,
+        sourceIndex,
+        overContainer,
+        targetIndex
+      );
+    }
+  };
+
+  const activeCard = activeId ? cards.find((c) => c.id === activeId) : null;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -230,7 +426,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         </div>
       </div>
 
-      <DragDropContext onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
         {/* Cards Display Section (Card Pool) */}
         <div className="bg-slate-800/90 rounded-2xl p-5 border border-slate-700 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
@@ -275,27 +477,23 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           </div>
 
           {/* Drag and Drop Container for Card Pool */}
-          <Droppable droppableId="pool" direction="horizontal">
-            {(provided, snapshot) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className={`flex flex-wrap gap-2.5 sm:gap-3 justify-center min-h-[120px] p-4 rounded-xl border transition-colors ${
-                  snapshot.isDraggingOver
-                    ? 'bg-slate-900/90 border-purple-500/50 ring-2 ring-purple-500/30'
-                    : 'bg-slate-900/60 border-slate-700/50'
-                }`}
-              >
-                {poolCards.length === 0 && !snapshot.isDraggingOver && (
-                  <p className="text-xs text-slate-500 w-full text-center py-8 select-none">
-                    すべてのカードが回答欄に配置されています
-                  </p>
-                )}
-                {poolCards.map((card, index) => renderCardItem(card, index))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
+          <DroppableZone
+            id="pool"
+            items={poolCards}
+            placeholderText="すべてのカードが回答欄に配置されています"
+            className="flex flex-wrap gap-2.5 sm:gap-3 justify-center min-h-[120px] p-4 bg-slate-900/60 rounded-xl border border-slate-700/50 transition-colors"
+          >
+            {poolCards.map((card, index) => (
+              <SortableCardItem
+                key={card.id}
+                card={card}
+                index={index}
+                onToggleSelect={onToggleSelect}
+                onToggleUsed={onToggleUsed}
+                onQuickMove={handleQuickMove}
+              />
+            ))}
+          </DroppableZone>
         </div>
 
         {/* Answer Drop Zones Section */}
@@ -329,7 +527,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     <div className="text-xs text-slate-300 font-medium">
                       {assembledText ? (
                         <span>
-                          組み立てタイトル: <span className="text-pink-300 font-bold text-sm ml-1">{assembledText}</span>
+                          組み立てタイトル:{' '}
+                          <span className="text-pink-300 font-bold text-sm ml-1">
+                            {assembledText}
+                          </span>
                         </span>
                       ) : (
                         <span className="text-slate-500 italic">未配置</span>
@@ -337,27 +538,23 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     </div>
                   </div>
 
-                  <Droppable droppableId={containerId} direction="horizontal">
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`flex flex-wrap gap-2.5 items-center min-h-[90px] p-3 rounded-lg border border-dashed transition-all ${
-                          snapshot.isDraggingOver
-                            ? 'bg-pink-950/30 border-pink-500 ring-2 ring-pink-500/20'
-                            : 'bg-slate-950/50 border-slate-700'
-                        }`}
-                      >
-                        {answerCards.length === 0 && !snapshot.isDraggingOver && (
-                          <p className="text-xs text-slate-500 w-full text-center py-4 select-none">
-                            ここにカードをドラッグ＆ドロップ（またはカードの矢印ボタン）
-                          </p>
-                        )}
-                        {answerCards.map((card, index) => renderCardItem(card, index))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
+                  <DroppableZone
+                    id={containerId}
+                    items={answerCards}
+                    placeholderText="ここにカードをドラッグ＆ドロップ（またはカードの矢印ボタン）"
+                    className="flex flex-wrap gap-2.5 items-center min-h-[90px] p-3 rounded-lg border border-dashed border-slate-700 bg-slate-950/50 transition-colors"
+                  >
+                    {answerCards.map((card, index) => (
+                      <SortableCardItem
+                        key={card.id}
+                        card={card}
+                        index={index}
+                        onToggleSelect={onToggleSelect}
+                        onToggleUsed={onToggleUsed}
+                        onQuickMove={handleQuickMove}
+                      />
+                    ))}
+                  </DroppableZone>
                 </div>
               );
             })}
@@ -372,7 +569,33 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             <span>FINAL ANSWER</span>
           </button>
         </div>
-      </DragDropContext>
+
+        {/* Drag Overlay for floating preview */}
+        <DragOverlay>
+          {activeCard ? (
+            <div className="flex flex-col items-center justify-between rounded-xl bg-slate-800 border-2 border-purple-400 shadow-2xl scale-105 select-none opacity-90">
+              <div className="w-full pt-1.5 pb-1 px-2 flex justify-between items-center bg-slate-900/40 rounded-t-xl border-b border-slate-700/50">
+                <input
+                  type="checkbox"
+                  checked={activeCard.isUsed}
+                  readOnly
+                  className="w-3.5 h-3.5 rounded text-pink-600 bg-slate-800 border-slate-600"
+                />
+              </div>
+              <div
+                className={`px-4 py-2.5 w-full rounded-b-xl font-bold text-center flex items-center justify-center min-w-[48px] gap-1.5 ${
+                  activeCard.isGroup
+                    ? 'bg-gradient-to-br from-purple-900 to-indigo-900 text-purple-200'
+                    : 'bg-slate-700 text-white'
+                }`}
+              >
+                <GripVertical className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-lg tracking-wider">{activeCard.text}</span>
+              </div>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 };

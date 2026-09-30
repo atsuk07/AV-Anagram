@@ -16,12 +16,13 @@ import {
 import { CardItem } from '../types/game';
 
 describe('gameLogic', () => {
-  it('splits titles into characters correctly', () => {
-    expect(splitIntoChars('女優作品')).toEqual(['女', '優', '作', '品']);
+  it('splits titles into characters correctly and removes half-width/full-width spaces', () => {
+    expect(splitIntoChars('女 優 作 品')).toEqual(['女', '優', '作', '品']);
+    expect(splitIntoChars('女　優　作　品')).toEqual(['女', '優', '作', '品']);
   });
 
-  it('combines and shuffles characters for anagram cards', () => {
-    const titles = ['ABC', 'DEF'];
+  it('combines and shuffles characters for anagram cards without spaces', () => {
+    const titles = ['AB C', 'DE　F'];
     const cards = createAnagramCards(titles);
 
     expect(cards.length).toBe(6);
@@ -148,8 +149,8 @@ describe('gameLogic', () => {
       expect(checkAnswers(['タイトル1', '間違え'], ['タイトル1', 'タイトル2'])).toBe(false);
     });
 
-    it('handles extra whitespace cleanly', () => {
-      expect(checkAnswers([' タイトル1 ', 'タイトル2'], ['タイトル1', 'タイトル2'])).toBe(true);
+    it('handles extra whitespace cleanly and matches titles ignoring spaces', () => {
+      expect(checkAnswers([' タイトル 1 ', 'タイ　トル2'], ['タイトル1', 'タイトル2'])).toBe(true);
     });
   });
 });
