@@ -4,7 +4,7 @@ import {
   DndContext,
   closestCorners,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
@@ -81,6 +81,7 @@ const SortableCardItem: React.FC<SortableCardProps> = ({
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
+    touchAction: 'none', // Prevents browser scroll when touch dragging a card
   };
 
   const currentContainer = getCardContainerId(card);
@@ -90,7 +91,7 @@ const SortableCardItem: React.FC<SortableCardProps> = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex flex-col items-center justify-between rounded-xl transition-all duration-150 select-none bg-slate-800 border ${
+      className={`flex flex-col items-center justify-between rounded-xl transition-all duration-150 select-none bg-slate-800 border touch-none ${
         isDragging
           ? 'shadow-2xl ring-2 ring-purple-400 z-50 opacity-40 scale-105 border-purple-400'
           : 'border-slate-700'
@@ -141,7 +142,7 @@ const SortableCardItem: React.FC<SortableCardProps> = ({
         {...attributes}
         {...listeners}
         onClick={() => onToggleSelect(card.id)}
-        className={`px-3 py-2 sm:px-4 sm:py-2.5 w-full rounded-b-xl font-bold text-center transition-all cursor-grab active:cursor-grabbing flex items-center justify-center min-w-[48px] gap-1.5 ${
+        className={`px-3 py-2 sm:px-4 sm:py-2.5 w-full rounded-b-xl font-bold text-center transition-all cursor-grab active:cursor-grabbing flex items-center justify-center min-w-[48px] gap-1.5 touch-none ${
           card.isUsed
             ? 'bg-slate-800/40 text-slate-500 line-through opacity-60'
             : card.isGroup
@@ -214,14 +215,14 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 3,
+        distance: 5,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 100,
+        delay: 150,
         tolerance: 5,
       },
     }),
@@ -573,7 +574,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         {/* Drag Overlay for floating preview */}
         <DragOverlay>
           {activeCard ? (
-            <div className="flex flex-col items-center justify-between rounded-xl bg-slate-800 border-2 border-purple-400 shadow-2xl scale-105 select-none opacity-90">
+            <div className="flex flex-col items-center justify-between rounded-xl bg-slate-800 border-2 border-purple-400 shadow-2xl scale-105 select-none opacity-90 touch-none">
               <div className="w-full pt-1.5 pb-1 px-2 flex justify-between items-center bg-slate-900/40 rounded-t-xl border-b border-slate-700/50">
                 <input
                   type="checkbox"
@@ -583,7 +584,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 />
               </div>
               <div
-                className={`px-4 py-2.5 w-full rounded-b-xl font-bold text-center flex items-center justify-center min-w-[48px] gap-1.5 ${
+                className={`px-4 py-2.5 w-full rounded-b-xl font-bold text-center flex items-center justify-center min-w-[48px] gap-1.5 touch-none ${
                   activeCard.isGroup
                     ? 'bg-gradient-to-br from-purple-900 to-indigo-900 text-purple-200'
                     : 'bg-slate-700 text-white'
