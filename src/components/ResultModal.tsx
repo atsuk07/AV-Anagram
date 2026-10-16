@@ -8,6 +8,7 @@ import {
   Share2,
   Check,
   Image as ImageIcon,
+  Dices,
 } from 'lucide-react';
 import { getAffiliateUrl } from '../utils/affiliate';
 import { generateShareUrl } from '../utils/share';
@@ -19,7 +20,10 @@ interface ResultModalProps {
   correctTitles: string[];
   userAnswers: string[];
   level?: Level;
+  isRandomMode?: boolean;
+  presetAffiliateUrl?: string | null;
   onReset: () => void;
+  onNextRandomProblem?: () => void;
 }
 
 export const ResultModal: React.FC<ResultModalProps> = ({
@@ -27,7 +31,10 @@ export const ResultModal: React.FC<ResultModalProps> = ({
   correctTitles,
   userAnswers,
   level = correctTitles.length as Level,
+  isRandomMode = false,
+  presetAffiliateUrl,
   onReset,
+  onNextRandomProblem,
 }) => {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [imageShareStatus, setImageShareStatus] = useState<string | null>(null);
@@ -143,7 +150,10 @@ export const ResultModal: React.FC<ResultModalProps> = ({
             </span>
             <div className="space-y-2.5">
               {correctTitles.map((title, idx) => {
-                const affiliateUrl = getAffiliateUrl(title);
+                const affiliateUrl = isRandomMode
+                  ? presetAffiliateUrl
+                  : getAffiliateUrl(title);
+
                 return (
                   <div
                     key={idx}
@@ -219,14 +229,36 @@ export const ResultModal: React.FC<ResultModalProps> = ({
           </button>
         </div>
 
-        {/* Action Button */}
-        <button
-          onClick={onReset}
-          className="w-full py-3.5 px-6 bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 hover:from-pink-600 hover:via-rose-600 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg shadow-pink-500/25 transition-all flex items-center justify-center gap-2"
-        >
-          <RotateCcw className="w-5 h-5" />
-          <span>もう一度遊ぶ / 新しい問題を作成</span>
-        </button>
+        {/* Action Buttons */}
+        <div className="space-y-2">
+          {isRandomMode && onNextRandomProblem ? (
+            <>
+              <button
+                onClick={onNextRandomProblem}
+                className="w-full py-3.5 px-6 bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 hover:from-pink-600 hover:via-rose-600 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg shadow-pink-500/25 transition-all flex items-center justify-center gap-2"
+              >
+                <Dices className="w-5 h-5" />
+                <span>次のランダム問題に挑戦（もう1問）</span>
+              </button>
+
+              <button
+                onClick={onReset}
+                className="w-full py-2.5 px-4 bg-slate-700/80 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-1.5"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>モード選択に戻る</span>
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={onReset}
+              className="w-full py-3.5 px-6 bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 hover:from-pink-600 hover:via-rose-600 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg shadow-pink-500/25 transition-all flex items-center justify-center gap-2"
+            >
+              <RotateCcw className="w-5 h-5" />
+              <span>もう一度遊ぶ / 新しい問題を作成</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

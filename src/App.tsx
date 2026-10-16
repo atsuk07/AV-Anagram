@@ -14,9 +14,17 @@ import {
   checkAnswers,
 } from './utils/gameLogic';
 import { decodeProblem } from './utils/share';
+import { PresetTitle } from './types/preset';
+import { getRandomPresetTitle } from './utils/presetTitles';
 
 export default function App() {
   const [stage, setStage] = useState<'input' | 'playing'>('input');
+  const [isRandomMode, setIsRandomMode] = useState<boolean>(false);
+  const [currentPresetId, setCurrentPresetId] = useState<string | undefined>(undefined);
+  const [currentAffiliateUrl, setCurrentAffiliateUrl] = useState<string | null | undefined>(
+    undefined
+  );
+
   const [gameState, setGameState] = useState<GameState>({
     level: 1,
     titles: [],
@@ -33,12 +41,16 @@ export default function App() {
     if (sharedParam) {
       const decoded = decodeProblem(sharedParam);
       if (decoded) {
-        handleStartGame(decoded.level, decoded.titles);
+        handleStartCustomGame(decoded.level, decoded.titles);
       }
     }
   }, []);
 
-  const handleStartGame = (level: Level, titles: string[]) => {
+  const handleStartCustomGame = (level: Level, titles: string[]) => {
+    setIsRandomMode(false);
+    setCurrentPresetId(undefined);
+    setCurrentAffiliateUrl(undefined);
+
     const cards = createAnagramCards(titles);
     setGameState({
       level,
@@ -49,6 +61,32 @@ export default function App() {
       isCorrect: null,
     });
     setStage('playing');
+  };
+
+  const handleStartRandomGame = (preset: PresetTitle) => {
+    setIsRandomMode(true);
+    setCurrentPresetId(preset.id);
+    setCurrentAffiliateUrl(preset.affiliateUrl);
+
+    const cards = createAnagramCards([preset.title]);
+    setGameState({
+      level: 1,
+      titles: [preset.title],
+      cards,
+      userAnswers: [''],
+      isSubmitted: false,
+      isCorrect: null,
+    });
+    setStage('playing');
+  };
+
+  const handleNextRandomProblem = () => {
+    const nextPreset = getRandomPresetTitle(currentPresetId);
+    if (nextPreset) {
+      handleStartRandomGame(nextPreset);
+    } else {
+      handleReset();
+    }
   };
 
   const handleToggleSelect = (cardId: string) => {
@@ -121,12 +159,14 @@ export default function App() {
   };
 
   const handleReset = () => {
-    // Clear URL search params without page reload
     if (window.location.search) {
       window.history.pushState({}, '', window.location.pathname);
     }
 
     setStage('input');
+    setIsRandomMode(false);
+    setCurrentPresetId(undefined);
+    setCurrentAffiliateUrl(undefined);
     setGameState({
       level: 1,
       titles: [],
@@ -150,7 +190,10 @@ export default function App() {
 
       <main className="container mx-auto">
         {stage === 'input' ? (
-          <TitleInput onStartGame={handleStartGame} />
+          <TitleInput
+            onStartGame={handleStartCustomGame}
+            onStartRandomGame={handleStartRandomGame}
+          />
         ) : (
           <GameBoard
             level={gameState.level}
@@ -172,7 +215,10 @@ export default function App() {
             isCorrect={gameState.isCorrect}
             correctTitles={gameState.titles}
             userAnswers={gameState.userAnswers}
+            isRandomMode={isRandomMode}
+            presetAffiliateUrl={currentAffiliateUrl}
             onReset={handleReset}
+            onNextRandomProblem={handleNextRandomProblem}
           />
         )}
       </main>
